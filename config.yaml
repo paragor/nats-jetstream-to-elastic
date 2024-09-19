@@ -1,0 +1,28 @@
+indexTemplate: |-
+  k8s-{{or .logs_index "default"}}-{{ now.Format "2006.01.02" }}
+nats:
+  url: "nats://localhost:4222"
+  stream: "your_stream_name"
+  consumer: "your_consumer_name"
+  pullMaxMessage: 0
+  pullMaxBytes: 1048576
+  disableAck: false
+elastic:
+  addrs:
+    - "http://localhost:9200"
+  username: "your_username"
+  password: "your_password"
+  maxWorkers: 10
+  maxRetries: 5
+  retryOnStatus:
+    - 502
+    - 503
+    - 504
+    - 429
+  skipSslVerify: false
+  flushInterval: 10s
+  flushBytes: 5242880
+  queryFilterPath:
+    - "took"
+    - "errors"
+    - "**.error"
