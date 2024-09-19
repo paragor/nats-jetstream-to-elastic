@@ -31,8 +31,9 @@ const app = "nats-jetstream-to-elastic"
 const indexNameSize = 256
 
 type Config struct {
-	IndexTemplate string `yaml:"indexTemplate"`
-	Nats          struct {
+	IndexTemplate       string        `yaml:"indexTemplate"`
+	PendingQueueTimeout time.Duration `yaml:"pendingQueueTimeout"`
+	Nats                struct {
 		Url            string `yaml:"url"`
 		Stream         string `yaml:"stream"`
 		Consumer       string `yaml:"consumer"`
@@ -121,8 +122,7 @@ func main() {
 		default:
 		}
 		log := log
-		metadata, err := msg.Metadata()
-		if err == nil {
+		if metadata, err := msg.Metadata(); err == nil {
 			log = log.With(
 				zap.String("stream", metadata.Stream),
 				zap.Uint64("sequence_stream", metadata.Sequence.Stream),
@@ -147,7 +147,14 @@ func main() {
 			_ = msg.Term()
 			return
 		}
-		if err := bi.Add(context.Background(), esutil.BulkIndexerItem{
+		pendingQueueCtx := context.Background()
+		if c.PendingQueueTimeout > 0 {
+			var cancel func()
+			pendingQueueCtx, cancel = context.WithTimeout(ctx, c.PendingQueueTimeout)
+			defer cancel()
+		}
+
+		if err := bi.Add(pendingQueueCtx, esutil.BulkIndexerItem{
 			Action: "index",
 			Index:  strings.TrimSpace(buffer.String()),
 			Body:   bytes.NewReader(msg.Data()),
@@ -163,17 +170,8 @@ func main() {
 					log.Error("error on bulk indexer")
 					return
 				}
-				if metadata == nil {
-					log.Error("error on bulk indexer, cant get metadata, so term msg")
-					_ = msg.Term()
-				}
-				if metadata.NumDelivered > 5 {
-					log.Error("error on bulk indexer, message is redelivered more than 5 times, so term msg")
-					_ = msg.Term()
-				} else {
-					log.Error("error on bulk indexer, redeliver message")
-					_ = msg.Nak()
-				}
+				log.Error("error on bulk indexer, redeliver message")
+				_ = msg.Nak()
 			},
 		},
 		); err != nil {

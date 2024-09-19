@@ -1,5 +1,6 @@
 indexTemplate: |-
   k8s-{{or .logs_index "default"}}-{{ now.Format "2006.01.02" }}
+pendingQueueTimeout: 1m # should be 1/2 of ackWait consumer settings
 nats:
   url: "nats://localhost:4222"
   stream: "your_stream_name"
