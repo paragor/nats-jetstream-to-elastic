@@ -239,7 +239,7 @@ func ParseConfig(configPath string, defaultConfig *Config) error {
 }
 
 func CreateNatsConsumer(ctx context.Context, c *Config) (jetstream.Consumer, error) {
-	natsConnect, err := nats.Connect(c.Nats.Url)
+	natsConnect, err := nats.Connect(c.Nats.Url, nats.Compression(true))
 	if err != nil {
 		return nil, fmt.Errorf("cant connect to nats: %w", err)
 	}
