@@ -22,7 +22,3 @@ elastic:
   skipSslVerify: false
   flushInterval: 10s
   flushBytes: 5242880
-  queryFilterPath:
-    - "took"
-    - "errors"
-    - "**.error"

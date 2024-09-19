@@ -106,6 +106,13 @@ func main() {
 		log.With(zap.Error(err)).Fatal("error on create elastic bulk indexer")
 	}
 
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			log.Debug("bulk indexer stats", zap.Any("stats", bi.Stats()))
+		}
+	}()
+
 	consumerContext, err := natsConsumer.Consume(func(msg jetstream.Msg) {
 		select {
 		case <-ctx.Done():
@@ -298,6 +305,9 @@ func CreateElasticBulkIndexer(ctx context.Context, c *Config) (esutil.BulkIndexe
 		FlushInterval: c.Elastic.FlushInterval,
 		Client:        es,
 		FilterPath:    c.Elastic.QueryFilterPath,
+		OnError: func(ctx context.Context, err error) {
+			logger.Logger().With(zap.Error(err)).Error("bulk indexer general error")
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("cant create indexer: %w", err)
